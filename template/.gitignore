@@ -1,0 +1,28 @@
+node_modules/
+build/
+dist/
+
+# The public disk link made by node strut storage:link (a copy on some Windows setups).
+public/storage
+
+# Secrets and machine-local settings: every .env file except the example.
+.env*
+!.env.example
+
+# Local Sail-style Docker services (ADR-0006: git-ignored). A production Dockerfile or a
+# .devcontainer/ is different: committed only when you choose it (ADR-0021).
+docker/
+
+# Local data (SQLite -wal/-shm/-journal files hold data too). Also ignored by database/.gitignore.
+database/*.sqlite*
+
+# Runtime files. The folders themselves are kept by the .gitignore inside each of them
+# (storage/app, storage/framework, storage/logs, bootstrap/cache), like Laravel.
+
+# Machine-local Strutvane state: setup progress, per-computer overrides. The rest of .strutvane/
+# (generated types, resources, schema) is committed, so a fresh clone type-checks.
+.strutvane/local/
+
+# Test and tool output
+coverage/
+*.log

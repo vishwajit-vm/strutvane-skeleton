@@ -1,0 +1,5 @@
+node_modules/
+coverage/
+# Rendered apps and framework tarballs made by the integration test (local only).
+.work/
+*.tgz

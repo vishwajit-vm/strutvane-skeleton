@@ -1,0 +1,354 @@
+{
+  "version": 1,
+  "framework": "^0.2.0-next.0",
+  "templateDir": "template",
+  "answers": {
+    "name": {
+      "description": "Project name and folder (question 1). An npm package name, so it is safe in every file.",
+      "type": "string",
+      "pattern": "[a-z0-9][a-z0-9._-]{0,213}",
+      "default": "my-app",
+      "installerOption": "options.name"
+    },
+    "ui": {
+      "description": "What are you building / UI starter (questions 2 and 4). none = API only.",
+      "type": "enum",
+      "values": ["admin", "blank", "none"],
+      "default": "admin",
+      "installerOption": "options.ui (undefined = none)"
+    },
+    "design": {
+      "description": "The look of the UI (question 3; ignored when ui is none).",
+      "type": "enum",
+      "values": ["crisp", "vivid"],
+      "default": "crisp",
+      "installerOption": "options.design"
+    },
+    "auth": {
+      "description": "How people sign in (question 5).",
+      "type": "enum",
+      "values": ["email", "magic-link", "none"],
+      "default": "email",
+      "installerOption": "options.auth"
+    },
+    "teams": {
+      "description": "Teams / multi-tenancy (question 11).",
+      "type": "boolean",
+      "default": "false",
+      "installerOption": "options.teams"
+    },
+    "database": {
+      "description": "The database engine (question 13).",
+      "type": "enum",
+      "values": ["mysql", "postgres", "sqlite"],
+      "default": "mysql",
+      "installerOption": "options.database"
+    },
+    "docker": {
+      "description": "With Docker or without (question 14). Only .env values change; the local compose file stays installer-written and git-ignored (ADR-0006).",
+      "type": "boolean",
+      "default": "false",
+      "installerOption": "options.docker"
+    },
+    "testing": {
+      "description": "Tests (question 23). vitest-playwright renders like vitest; the browser test setup is still the installer's.",
+      "type": "enum",
+      "values": ["vitest", "vitest-playwright", "none"],
+      "default": "vitest",
+      "installerOption": "options.testing"
+    },
+    "locale": {
+      "description": "Default language (question 21).",
+      "type": "string",
+      "pattern": "[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*",
+      "default": "en",
+      "installerOption": "options.locale"
+    },
+    "timezone": {
+      "description": "Default IANA time zone (question 21).",
+      "type": "string",
+      "pattern": "[A-Za-z0-9_+/-]{1,64}",
+      "default": "UTC",
+      "installerOption": "options.timezone"
+    },
+    "currency": {
+      "description": "Default ISO 4217 currency (question 21).",
+      "type": "string",
+      "pattern": "[A-Z]{3}",
+      "default": "USD",
+      "installerOption": "options.currency"
+    }
+  },
+  "placeholders": {
+    "APP_NAME": { "description": "The project name.", "from": "name" },
+    "APP_SLUG": {
+      "description": "The project name as a SQL identifier and cookie name (acme-portal -> acme_portal).",
+      "from": "name",
+      "transform": "snake"
+    },
+    "APP_LOCALE": { "description": "Default language.", "from": "locale" },
+    "APP_TIMEZONE": { "description": "Default time zone.", "from": "timezone" },
+    "APP_CURRENCY": { "description": "Default currency.", "from": "currency" },
+    "DB_CONNECTION": {
+      "description": "DB_CONNECTION for the chosen engine.",
+      "from": "database",
+      "map": { "mysql": "mysql", "postgres": "pgsql", "sqlite": "sqlite" }
+    },
+    "DB_HOST": {
+      "description": "The database host: the compose service in Docker mode, the local machine otherwise.",
+      "from": "docker",
+      "map": { "true": "db", "false": "127.0.0.1" }
+    },
+    "DB_PORT": {
+      "description": "The engine's default port (empty for SQLite).",
+      "from": "database",
+      "map": { "mysql": "3306", "postgres": "5432", "sqlite": "" }
+    },
+    "DB_USERNAME": {
+      "description": "The usual local login (XAMPP/MAMP root, postgres). Docker mode and typed connection details override it in .env.",
+      "from": "database",
+      "map": { "mysql": "root", "postgres": "postgres", "sqlite": "" }
+    },
+    "DESIGN": { "description": "The design name, as in config/ui.ts.", "from": "design" },
+    "DESIGN_PACKAGE": {
+      "description": "The design's npm package.",
+      "from": "design",
+      "map": { "crisp": "@strutvane/design-crisp", "vivid": "@strutvane/design-vivid" }
+    }
+  },
+  "files": [
+    { "path": ".editorconfig", "mode": "copy" },
+    { "path": ".env.example", "mode": "template" },
+    {
+      "path": ".gitignore",
+      "mode": "copy",
+      "note": "npm pack drops .gitignore: a bundled copy must be stored under another name (INSTALLER.md)."
+    },
+    {
+      "path": ".npmrc",
+      "mode": "copy",
+      "note": "npm pack never includes .npmrc: a bundled copy must be stored under another name (INSTALLER.md)."
+    },
+    {
+      "path": ".strutvane/resources.json",
+      "mode": "copy",
+      "note": "Generated by node strut sync from the migrations; committed."
+    },
+    {
+      "path": ".strutvane/schema.json",
+      "mode": "copy",
+      "note": "Generated by node strut sync from the migrations; committed."
+    },
+    { "path": ".strutvane/sql/migrations.mariadb.sql", "mode": "copy", "note": "Generated." },
+    { "path": ".strutvane/sql/migrations.mysql.sql", "mode": "copy", "note": "Generated." },
+    { "path": ".strutvane/sql/migrations.postgres.sql", "mode": "copy", "note": "Generated." },
+    { "path": ".strutvane/sql/migrations.sqlite.sql", "mode": "copy", "note": "Generated." },
+    { "path": ".strutvane/sql/schema.mariadb.sql", "mode": "copy", "note": "Generated." },
+    { "path": ".strutvane/sql/schema.mysql.sql", "mode": "copy", "note": "Generated." },
+    { "path": ".strutvane/sql/schema.postgres.sql", "mode": "copy", "note": "Generated." },
+    { "path": ".strutvane/sql/schema.sqlite.sql", "mode": "copy", "note": "Generated." },
+    {
+      "path": ".strutvane/types/models.d.ts",
+      "mode": "copy",
+      "note": "Generated by node strut sync from the migrations; committed."
+    },
+    { "path": "README.md", "mode": "template" },
+    { "path": "app/http/controllers/health.controller.ts", "mode": "copy" },
+    { "path": "app/http/controllers/welcome.controller.ts", "mode": "copy" },
+    { "path": "app/http/middleware/.gitkeep", "mode": "copy" },
+    { "path": "app/http/requests/.gitkeep", "mode": "copy" },
+    { "path": "app/models/user.ts", "mode": "copy" },
+    { "path": "app/policies/user.policy.ts", "mode": "copy" },
+    { "path": "app/providers/app.provider.ts", "mode": "copy" },
+    { "path": "bootstrap/app.ts", "mode": "copy" },
+    { "path": "bootstrap/cache/.gitignore", "mode": "copy" },
+    { "path": "bootstrap/providers.ts", "mode": "copy" },
+    { "path": "config/app.ts", "mode": "template" },
+    {
+      "path": "config/auth.ts",
+      "mode": "answers",
+      "generator": "configAuth",
+      "when": { "auth": { "not": ["none"] } },
+      "note": "Sign-in feature switches from questions 5, 6, 9 and 11; the template holds the Recommended answers."
+    },
+    { "path": "config/cache.ts", "mode": "copy" },
+    { "path": "config/database.ts", "mode": "template" },
+    { "path": "config/filesystems.ts", "mode": "copy" },
+    { "path": "config/index.ts", "mode": "copy" },
+    { "path": "config/logging.ts", "mode": "copy" },
+    { "path": "config/session.ts", "mode": "template" },
+    {
+      "path": "config/tenancy.ts",
+      "mode": "answers",
+      "generator": "tenancyConfig",
+      "note": "enabled from question 11, resolver from question 12; the template holds teams off."
+    },
+    { "path": "config/ui.ts", "mode": "template", "when": { "ui": { "not": ["none"] } } },
+    { "path": "database/.gitignore", "mode": "copy" },
+    { "path": "database/factories/user.factory.ts", "mode": "copy" },
+    { "path": "database/migrations/0001_01_01_000000_create_users_table.ts", "mode": "copy" },
+    { "path": "database/seeders/database.seeder.ts", "mode": "copy" },
+    { "path": "database/seeders/user.seeder.ts", "mode": "copy" },
+    { "path": "package.json", "mode": "template" },
+    { "path": "public/robots.txt", "mode": "copy" },
+    {
+      "path": "resources/ui/index.html",
+      "mode": "template",
+      "when": { "ui": { "not": ["none"] } }
+    },
+    { "path": "resources/ui/main.tsx", "mode": "template", "when": { "ui": { "not": ["none"] } } },
+    { "path": "resources/ui/theme.css", "mode": "template", "when": { "ui": { "not": ["none"] } } },
+    { "path": "resources/ui/tsconfig.json", "mode": "copy", "when": { "ui": { "not": ["none"] } } },
+    { "path": "routes/api.ts", "mode": "copy" },
+    { "path": "routes/web.ts", "mode": "copy" },
+    { "path": "storage/app/.gitignore", "mode": "copy" },
+    { "path": "storage/app/public/.gitignore", "mode": "copy" },
+    { "path": "storage/framework/.gitignore", "mode": "copy" },
+    { "path": "storage/framework/cache/.gitignore", "mode": "copy" },
+    { "path": "storage/framework/sessions/.gitignore", "mode": "copy" },
+    { "path": "storage/logs/.gitignore", "mode": "copy" },
+    {
+      "path": "strut.js",
+      "mode": "copy",
+      "note": "Executable bit: the installer sets 0o755 on POSIX."
+    },
+    {
+      "path": "tests/feature/health.test.ts",
+      "mode": "copy",
+      "when": { "testing": { "not": ["none"] } }
+    },
+    {
+      "path": "tests/unit/health.controller.test.ts",
+      "mode": "copy",
+      "when": { "testing": { "not": ["none"] } }
+    },
+    { "path": "tsconfig.json", "mode": "copy" },
+    { "path": "vite.config.ts", "mode": "copy", "when": { "ui": { "not": ["none"] } } }
+  ],
+  "packageJson": {
+    "dependencies": [
+      { "name": "@strutvane/framework", "value": "^0.2.0-next.0" },
+      {
+        "name": "@strutvane/auth",
+        "value": "^0.2.0-next.0",
+        "when": { "auth": { "not": ["none"] } }
+      },
+      { "name": "@strutvane/ui", "value": "^0.2.0-next.0", "when": { "ui": { "not": ["none"] } } },
+      {
+        "name": "@strutvane/design-crisp",
+        "value": "^0.2.0-next.0",
+        "when": { "ui": { "not": ["none"] }, "design": { "is": ["crisp"] } }
+      },
+      {
+        "name": "@strutvane/design-vivid",
+        "value": "^0.2.0-next.0",
+        "when": { "ui": { "not": ["none"] }, "design": { "is": ["vivid"] } }
+      },
+      { "name": "@tanstack/react-form", "value": "1.33.5", "when": { "ui": { "not": ["none"] } } },
+      {
+        "name": "@tanstack/react-query",
+        "value": "5.107.1",
+        "when": { "ui": { "not": ["none"] } }
+      },
+      { "name": "@tanstack/react-table", "value": "9.3.1", "when": { "ui": { "not": ["none"] } } },
+      {
+        "name": "@tanstack/react-virtual",
+        "value": "3.14.26",
+        "when": { "ui": { "not": ["none"] } }
+      },
+      { "name": "react", "value": "19.3.1", "when": { "ui": { "not": ["none"] } } },
+      { "name": "react-dom", "value": "19.3.1", "when": { "ui": { "not": ["none"] } } },
+      { "name": "mysql2", "value": "3.24.6", "when": { "database": { "is": ["mysql"] } } },
+      { "name": "pg", "value": "8.23.1", "when": { "database": { "is": ["postgres"] } } }
+    ],
+    "devDependencies": [
+      { "name": "@types/node", "value": "24.19.2" },
+      { "name": "typescript", "value": "6.0.3" },
+      { "name": "@types/react", "value": "19.3.0", "when": { "ui": { "not": ["none"] } } },
+      { "name": "@types/react-dom", "value": "19.3.0", "when": { "ui": { "not": ["none"] } } },
+      { "name": "@vitejs/plugin-react", "value": "6.3.0", "when": { "ui": { "not": ["none"] } } },
+      { "name": "vite", "value": "8.3.8", "when": { "ui": { "not": ["none"] } } },
+      { "name": "vitest", "value": "5.1.0", "when": { "testing": { "not": ["none"] } } }
+    ],
+    "scripts": [
+      { "name": "test", "value": "vitest run", "when": { "testing": { "not": ["none"] } } }
+    ]
+  },
+  "installerFiles": [
+    {
+      "path": ".env",
+      "why": "Holds secrets: .env.example rendered, then APP_KEY (and generated database passwords in Docker mode) filled in by the secrets step. Never committed."
+    },
+    {
+      "path": "strutvane.json",
+      "why": "Every installer answer (never a secret), read by node strut install:<name>, strut.js (Docker mode) and npm run setup."
+    },
+    {
+      "path": "docker/compose.yaml",
+      "when": { "docker": { "is": ["true"] } },
+      "why": "Local Sail-style services; git-ignored (ADR-0006), so never part of a committed template."
+    },
+    {
+      "path": "Dockerfile",
+      "whenText": "deploy is docker",
+      "why": "Production image, only on opt-in (ADR-0021). Strutvane repos never commit Docker files."
+    },
+    {
+      "path": ".dockerignore",
+      "whenText": "deploy is docker",
+      "why": "Goes with the opt-in production Dockerfile (ADR-0021)."
+    },
+    {
+      "path": ".devcontainer/devcontainer.json",
+      "whenText": "devContainer is true",
+      "why": "Opt-in dev container (ADR-0021)."
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "whenText": "git CI is yes",
+      "why": "The app's own CI. A workflow in this repo would run in the skeleton repo itself, and workflows are tooling-managed files."
+    },
+    {
+      "path": ".vscode/settings.json",
+      "whenText": "editor setup is yes",
+      "why": "Editor setup answer (question 36)."
+    },
+    {
+      "path": ".vscode/extensions.json",
+      "whenText": "editor setup is yes",
+      "why": "Editor setup answer (question 36)."
+    },
+    {
+      "path": "AGENTS.md",
+      "whenText": "agents is yes",
+      "why": "AI assistants answer (question 24)."
+    },
+    {
+      "path": "deploy/README.md",
+      "whenText": "deploy is not later",
+      "why": "Deploy recipe (question 35)."
+    },
+    {
+      "path": "config/api.ts",
+      "why": "Answer-only settings (API token rule, question 9) for packages that are not built yet."
+    },
+    { "path": "config/mail.ts", "why": "Production mailer answer (question 20)." },
+    { "path": "config/security.ts", "why": "Security profile answer (question 26)." },
+    { "path": "config/monitoring.ts", "why": "Monitoring answer (question 34)." },
+    {
+      "path": "config/permissions.ts",
+      "whenText": "auth is not none",
+      "why": "Starting roles answer (question 10)."
+    },
+    {
+      "path": "config/ai.ts",
+      "whenText": "AI answers",
+      "why": "AI provider / MCP answers (questions 28 and 29)."
+    },
+    {
+      "path": "database/seeders/admin.seeder.ts",
+      "when": { "auth": { "not": ["none"] } },
+      "why": "The first admin depends on @strutvane/auth; it belongs to node strut install:auth."
+    }
+  ]
+}

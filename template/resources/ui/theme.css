@@ -1,0 +1,23 @@
+/*
+ * Your theme overrides. This file is yours: upgrades and `node strut design:use` never change it.
+ *
+ * The design ({{DESIGN_PACKAGE}}, named in config/ui.ts) sets every token below. It loads first
+ * and this file loads after it, so whatever you set here wins. Uncomment a line and change its
+ * value to restyle the whole app; anything left commented keeps the design's own value.
+ */
+
+:root {
+  /* Brand colour: buttons, links, focus rings and the active menu item. An OKLCH hue from 0 to
+     360 (250 = blue, 150 = green, 25 = red); the design derives every shade from it and keeps
+     text contrast readable (WCAG AA) for any hue. */
+  /* --brand-hue: 250; */
+  /* Font for the whole UI. Load a web font in index.html first, or use one the computer has. */
+  /* --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif; */
+  /* Corner radius of cards, inputs and buttons: 0 for square corners, 0.75rem for soft ones. */
+  /* --radius: 0.5rem; */
+  /* Spacing density: compact, comfortable or spacious. */
+  /* --density: comfortable; */
+}
+
+/* Dark mode: the same tokens, set only for the dark theme. */
+/* .dark { --brand-hue: 250; } */

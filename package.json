@@ -1,0 +1,37 @@
+{
+  "name": "strutvane-skeleton",
+  "version": "0.2.0-next.0",
+  "private": true,
+  "description": "The application template that npm create strutvane installs (the role laravel/laravel plays for Laravel): template/ plus the skeleton.json manifest.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vishwajit-vm/strutvane-skeleton.git"
+  },
+  "engines": {
+    "node": ">=24.3"
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "npm",
+      "version": ">=11.19.0",
+      "onFail": "error"
+    }
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "render": "node scripts/render.ts",
+    "ci": "biome check . && tsc --noEmit && vitest run"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.7",
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  },
+  "allowScripts": {}
+}

@@ -1,0 +1,44 @@
+{
+  // The app's TypeScript settings: strict, ESM, Node 24+. Type-checking only (`npm run typecheck`):
+  // Node runs the .ts files directly (type stripping), so nothing is compiled.
+  //
+  // Why no `isolatedDeclarations` (the Strutvane library repos use it): an app never publishes
+  // type declarations, and that flag would forbid the `typeof web` / `ConfigOf<typeof config>`
+  // inference the typed route and config registries rely on (framework app-core decision).
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "target": "ES2024",
+    "lib": ["ES2024"],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "moduleDetection": "force",
+    "resolveJsonModule": true,
+
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "noImplicitOverride": true,
+    "noImplicitReturns": true,
+    "noFallthroughCasesInSwitch": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "useUnknownInCatchVariables": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "allowUnreachableCode": false,
+    "allowUnusedLabels": false,
+
+    "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    // Node's type stripping runs these files as they are: no enums, namespaces or parameter
+    // properties (they need a compile step).
+    "erasableSyntaxOnly": true,
+    "allowImportingTsExtensions": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  // The server side. The React UI (resources/ui) has its own tsconfig (DOM types, JSX).
+  "include": ["app", "bootstrap", "config", "database", "routes", "tests", ".strutvane/types"],
+  "exclude": ["node_modules", "build", "resources", "storage"]
+}
