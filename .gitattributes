@@ -1,4 +1,4 @@
-# Copy of strutvane-tooling canonical .gitattributes (this repo is not a sync target yet: NEXT.md).
+# Managed by strutvane-tooling (canonical/.gitattributes).
 # Force LF line endings in the repo and in every checkout, on every OS. Without this, Windows
 # machines with core.autocrlf=true check files out with CRLF and the formatter (lineEnding: lf)
 # fails on a perfectly clean clone.

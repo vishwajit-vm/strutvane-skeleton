@@ -1,36 +1,12 @@
 {
-  // This repo's own code: the manifest reader, the renderer and the tests. The app template has
-  // its own tsconfig (template/tsconfig.json); the integration test type-checks a rendered copy
-  // of it against a real @strutvane/framework.
+  // This repo's own code: the manifest reader, the renderer and the tests. The strict settings
+  // come from tsconfig.base.json (synced from strutvane-tooling, app-template profile: no
+  // isolatedDeclarations, since nothing here is published). The app template has its own
+  // tsconfig (template/tsconfig.json); the integration test type-checks a rendered copy of it
+  // against a real @strutvane/framework.
   "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./tsconfig.base.json",
   "compilerOptions": {
-    "target": "ES2024",
-    "lib": ["ES2024"],
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "moduleDetection": "force",
-    "resolveJsonModule": true,
-    "strict": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "noImplicitOverride": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "noPropertyAccessFromIndexSignature": true,
-    "useUnknownInCatchVariables": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "allowUnreachableCode": false,
-    "allowUnusedLabels": false,
-    "isolatedModules": true,
-    "isolatedDeclarations": true,
-    "declaration": true,
-    "verbatimModuleSyntax": true,
-    "erasableSyntaxOnly": true,
-    "allowImportingTsExtensions": true,
-    "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true,
-    "noEmit": true,
     "types": ["node"]
   },
   "include": ["src", "scripts", "test", "vitest.config.ts"]

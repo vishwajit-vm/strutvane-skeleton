@@ -62,15 +62,23 @@ The first build of `strutvane-skeleton`: the app template (`template/`), the man
 5. **Move installer-appended `.env` keys** (Docker, mail, first admin, AI) into the template with
    `@strut:if` blocks, so `.env.example` has one source.
 
-## What strutvane-tooling needs (do not edit tooling from here)
-`packages/tooling/manifest.json` has the profiles `library`, `site` and `meta`; none fits an app
-template, so this repo is **not** a sync target yet and carries owned copies of `.npmrc`,
-`.gitattributes`, `.editorconfig` and the Biome/tsconfig settings. Proposal: a new profile
-`app-template` that syncs `.editorconfig`, `.gitattributes`, `.npmrc`, `biome.base.json`,
-`.claude/ECOSYSTEM.md` and a CI workflow running `npm ci && npm run ci` (Node 24 and 26, Windows
-and Linux), but **not** `tsconfig.base.json` (`isolatedDeclarations` is wrong for apps), the
-release workflow, `RELEASE-READINESS.md` or publint/attw (nothing is published). Then add
-`{ "name": "skeleton", "profile": "app-template" }` to the targets.
+## Synced from strutvane-tooling (`app-template` profile)
+This repo is the `skeleton` target of strutvane-tooling's new `app-template` profile (tooling
+branch `feat/npx-and-app-template`, not merged yet). Synced, never edit here: `.editorconfig`,
+`.gitattributes`, `.gitignore` (library rules + `/.work/`, `*.tgz`), `.npmrc`, `biome.base.json`,
+`tsconfig.base.json` (app variant: no `isolatedDeclarations` / `declaration` /
+`declarationMap`), `.claude/ECOSYSTEM.md` + guardian agent + contribute skill,
+`.github/workflows/ci.yml` (verify on Linux/Windows/macOS × Node 24/26 with check-deps,
+check-code-rules, `npm audit signatures`, `npm run ci`; tests 3×; `npm audit --omit=dev` +
+TruffleHog), `.github/workflows/scorecard.yml`, `.github/dependabot.yml`,
+`.github/scripts/check-deps.mjs`, `.github/scripts/check-code-rules.mjs`. No release workflow,
+publint/attw or `RELEASE-READINESS.md`: nothing here is published.
+`tsconfig.json` and `biome.json` now extend the synced bases (`noConsole` stays `error` here).
+After the first sync: biome, tsc, vitest green (54 passed, 8 skipped: the integration suite,
+skipped with `STRUT_FRAMEWORK_TARBALL` pointing nowhere), check-deps and check-code-rules clean,
+`npm audit --omit=dev --audit-level=high` 0 *(agent-reported)*.
+Open: Dependabot watches only `/`, not `template/package.json` (the app's dependencies are bumped
+by hand with the framework train); the integration suite skips in CI until the framework is on npm.
 
 ## How to verify
 ```bash
