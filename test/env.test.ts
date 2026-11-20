@@ -3,14 +3,93 @@ import { resolveAnswers } from '../src/manifest.ts'
 import { type RenderedFile, renderSkeleton } from '../src/render.ts'
 import { everyRendering, manifest, ROOT, templateText, walk } from './helpers.ts'
 
+/** The keys of one extra database connection on a server (`DB_<NAME>_*`, decision #132). */
+const SERVER_CONNECTION_KEYS = [
+  'HOST',
+  'PORT',
+  'DATABASE',
+  'TEST_DATABASE',
+  'USERNAME',
+  'PASSWORD',
+  'URL',
+  'SOCKET',
+  'SSLMODE',
+  'SSL_CA',
+] as const
+
+/** The extra connections config/database.ts declares, and the keys each one reads. */
+const EXTRA_CONNECTIONS: Readonly<Record<string, readonly string[]>> = {
+  mysql: SERVER_CONNECTION_KEYS,
+  pgsql: SERVER_CONNECTION_KEYS,
+  sqlite: ['DATABASE', 'TEST_DATABASE'],
+}
+
 /**
  * Keys the framework reads straight from the environment (never through a config file), so
- * secrets stay out of the config tree: they must be documented in .env.example too.
+ * secrets stay out of the config tree: they must be documented in .env.example too. An extra
+ * connection's keys are read by the framework when that connection is first used.
  */
-const READ_BY_FRAMEWORK = ['DB_PASSWORD', 'DB_URL', 'LOG_SLACK_WEBHOOK_URL'] as const
+const READ_BY_FRAMEWORK: readonly string[] = [
+  'DB_PASSWORD',
+  'DB_URL',
+  'DB_MIGRATION_REPLAY_TIMEOUT',
+  'LOG_SLACK_WEBHOOK_URL',
+  ...Object.entries(EXTRA_CONNECTIONS).flatMap(([name, keys]) =>
+    keys.map((key) => `DB_${name.toUpperCase()}_${key}`),
+  ),
+]
 
-/** Keys whose value is a secret or holds one: always empty in .env.example. */
-const SECRET = /^(APP_KEY|APP_PREVIOUS_KEYS|DB_URL)$|PASSWORD|SECRET|TOKEN|WEBHOOK|_DSN$|API_KEY/
+/**
+ * Keys of services the app gets from a later framework release or an add-on, listed now so the
+ * app's .env is complete from the first day (decision #132). No skeleton config file reads them
+ * yet; each group's comment in .env.example says what does.
+ */
+const LISTED_FOR_SERVICES: Readonly<Record<string, readonly string[]>> = {
+  queue: ['QUEUE_CONNECTION'],
+  mail: [
+    'MAIL_MAILER',
+    'MAIL_SCHEME',
+    'MAIL_HOST',
+    'MAIL_PORT',
+    'MAIL_USERNAME',
+    'MAIL_PASSWORD',
+    'MAIL_FROM_ADDRESS',
+    'MAIL_FROM_NAME',
+  ],
+  broadcast: ['BROADCAST_CONNECTION'],
+  s3: [
+    'AWS_ACCESS_KEY_ID',
+    'AWS_SECRET_ACCESS_KEY',
+    'AWS_SESSION_TOKEN',
+    'AWS_DEFAULT_REGION',
+    'AWS_BUCKET',
+    'AWS_URL',
+    'AWS_ENDPOINT',
+    'AWS_USE_PATH_STYLE_ENDPOINT',
+  ],
+  redis: [
+    'REDIS_URL',
+    'REDIS_HOST',
+    'REDIS_PORT',
+    'REDIS_USERNAME',
+    'REDIS_PASSWORD',
+    'REDIS_DB',
+    'REDIS_TLS',
+    'REDIS_TLS_CA',
+    'REDIS_TLS_SERVERNAME',
+    'REDIS_PREFIX',
+    'REDIS_CONNECT_TIMEOUT',
+    'REDIS_COMMAND_TIMEOUT',
+  ],
+}
+const SERVICE_KEYS: readonly string[] = Object.values(LISTED_FOR_SERVICES).flat()
+
+/**
+ * Keys whose value is a secret or holds one: always empty in .env.example. Connection URLs carry
+ * the password (postgres://user:pass@...), so every database URL and REDIS_URL count.
+ */
+const SECRET =
+  /^(APP_KEY|APP_PREVIOUS_KEYS|REDIS_URL)$|^DB_([A-Z0-9]+_)?URL$|PASSWORD|SECRET|TOKEN|WEBHOOK|_DSN$|API_KEY|ACCESS_KEY/
 
 /** A value that looks like key material: long and base64/hex-like. */
 const KEY_MATERIAL = /^(base64:)?[A-Za-z0-9+/=_-]{24,}$/
@@ -75,10 +154,77 @@ describe('.env.example', () => {
   })
 
   it('sets no key that nothing reads', () => {
-    const answers = resolveAnswers(manifest, { database: 'postgres' })
-    const { set } = parseExample(exampleOf(renderSkeleton({ root: ROOT, manifest, answers })))
-    const known = new Set<string>([...configKeys, ...READ_BY_FRAMEWORK])
-    for (const key of set.keys()) expect(known.has(key), `${key} is read by nothing`).toBe(true)
+    for (const database of ['postgres', 'sqlite']) {
+      const answers = resolveAnswers(manifest, { database })
+      const { set } = parseExample(exampleOf(renderSkeleton({ root: ROOT, manifest, answers })))
+      const known = new Set<string>([...configKeys, ...READ_BY_FRAMEWORK, ...SERVICE_KEYS])
+      for (const key of set.keys()) expect(known.has(key), `${key} is read by nothing`).toBe(true)
+    }
+  })
+
+  it('sets every key (#132), none only commented out, for every answer combination', () => {
+    for (const { answers, files } of everyRendering()) {
+      const { set, documented } = parseExample(exampleOf(files))
+      for (const key of [...configKeys, ...READ_BY_FRAMEWORK, ...SERVICE_KEYS])
+        expect(set.has(key), `${key} is not set (database=${answers['database']})`).toBe(true)
+      expect([...documented].filter((key) => !set.has(key))).toEqual([])
+    }
+  })
+
+  it('fills in what works without a server, and leaves each extra database to be chosen', () => {
+    const { set } = parseExample(
+      exampleOf(renderSkeleton({ root: ROOT, manifest, answers: resolveAnswers(manifest) })),
+    )
+    expect(set.get('REDIS_HOST')).toBe('127.0.0.1')
+    expect(set.get('REDIS_PORT')).toBe('6379')
+    expect(set.get('REDIS_DB')).toBe('0')
+    expect(set.get('DB_MYSQL_HOST')).toBe('127.0.0.1')
+    expect(set.get('DB_MYSQL_PORT')).toBe('3306')
+    expect(set.get('DB_PGSQL_PORT')).toBe('5432')
+    expect(set.get('QUEUE_CONNECTION')).toBe('database')
+    expect(set.get('MAIL_MAILER')).toBe('log')
+    expect(set.get('CACHE_STORE')).toBe('file')
+    // The framework checks a connection when it is first used: an empty database is the "not
+    // configured yet" state, and the error then names DB_<NAME>_DATABASE.
+    for (const name of Object.keys(EXTRA_CONNECTIONS))
+      expect(set.get(`DB_${name.toUpperCase()}_DATABASE`)).toBe('')
+  })
+
+  it('groups the keys under a comment each, and says Redis needs @strutvane/redis', () => {
+    for (const { answers, files } of everyRendering()) {
+      const lines = exampleOf(files).split('\n')
+      // A block of keys always starts right after a comment line, never after a blank line.
+      lines.forEach((line, index) => {
+        if (/^[A-Z]/.test(line) && (lines[index - 1] ?? '') === '')
+          expect.fail(`${line} starts a block without a comment (database=${answers['database']})`)
+      })
+    }
+    const text = exampleOf(
+      renderSkeleton({ root: ROOT, manifest, answers: resolveAnswers(manifest) }),
+    )
+    const lines = text.split('\n')
+    const redis = lines.findIndex((line) => line.startsWith('REDIS_'))
+    expect(lines.slice(Math.max(0, redis - 3), redis).join('\n')).toContain('@strutvane/redis')
+    for (const heading of [
+      '# Application',
+      '# Database',
+      '# Extra database connections',
+      '# Logging',
+      '# Cache',
+      '# Sessions',
+      '# Queues',
+      '# Mail',
+      '# Broadcasting',
+      '# Files',
+      '# Redis',
+    ])
+      expect(text).toContain(heading)
+  })
+
+  it('declares in config/database.ts exactly the extra connections whose keys it lists', () => {
+    const text = templateText('config/database.ts')
+    for (const name of Object.keys(EXTRA_CONNECTIONS))
+      expect(text).toContain(`${name}: { driver: '${name}' }`)
   })
 
   it('holds no secret: secret keys are empty and no value looks like key material', () => {

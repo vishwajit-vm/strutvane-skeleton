@@ -43,7 +43,7 @@ resources/ui/                React entry with @strutvane/ui and the chosen desig
 storage/{app,framework,logs}/, bootstrap/cache/  kept empty with .gitignore files, like Laravel
 .strutvane/                  generated from the migrations by node strut migrate; committed
 tests/feature, tests/unit    Vitest
-.env.example                 every key the config files read; no secrets
+.env.example                 every key the framework reads, grouped (#132); no secrets
 ```
 
 No Docker file is ever committed here (ADR-0006). The local compose file and the opt-in production `Dockerfile` / `.devcontainer/` (ADR-0021) stay installer steps.

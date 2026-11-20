@@ -2,7 +2,8 @@
 //
 // `node strut migrate`, `db:seed` and the other database commands read the same DB_* keys from
 // .env directly, so this file and the CLI always agree. DB_CONNECTION is mysql, mariadb, pgsql
-// (postgres is accepted too) or sqlite. DB_URL, when set, wins over the separate keys.
+// (postgres is accepted too) or sqlite. DB_URL, when set, wins over the separate keys. The DB_*
+// keys are the default connection; `connections` at the end adds more.
 //
 // Why the password and DB_URL are not in this file: the config tree is kept for every request,
 // written to bootstrap/cache by `node strut config:cache` and easy to dump while debugging. The
@@ -35,5 +36,17 @@ export default defineConfig((env) => ({
     table: 'migrations',
     /** How long `migrate` waits for another run's lock: 10s, 30000 (ms) or 2min; 0 = forever. */
     lock_timeout: env.string('DB_MIGRATION_LOCK_TIMEOUT', '10s'),
+  },
+  /**
+   * Extra connections, used next to the default one: `db.connection('pgsql')`, a model's
+   * `connection: 'pgsql'` option, or `node strut migrate --database=pgsql`. Each reads its own
+   * DB_<NAME>_* keys from .env (DB_PGSQL_HOST, DB_PGSQL_DATABASE, DB_PGSQL_PASSWORD, ...) when it
+   * is first used, so empty keys never stop the app. A key set here wins over .env (the password
+   * and URL can't be set here). Add your own: `reports: { driver: 'pgsql' }` reads DB_REPORTS_*.
+   */
+  connections: {
+    mysql: { driver: 'mysql' },
+    pgsql: { driver: 'pgsql' },
+    sqlite: { driver: 'sqlite' },
   },
 }))

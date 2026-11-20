@@ -35,7 +35,7 @@ Columns live only in migrations. `migrate` applies them, then regenerates the ty
 | `app/policies/` | who may do what (`post.policy.ts`; deny by default) |
 | `app/providers/` | service providers (`bootstrap/providers.ts` lists the ones that run) |
 | `bootstrap/app.ts` | builds the app: config, providers, routes, middleware, error handling |
-| `config/` | settings; values come from `.env` (`.env.example` lists every key, never a secret) |
+| `config/` | settings; values come from `.env` (`.env.example` lists every key the framework reads, never a secret) |
 | `database/migrations/`, `seeders/`, `factories/` | schema, sample data, fake data for tests |
 | `routes/web.ts`, `routes/api.ts` | routes (the API is served under `/api`; `GET /up` is the health check) |
 <!-- @strut:if ui not none -->
@@ -50,6 +50,13 @@ Columns live only in migrations. `migrate` applies them, then regenerates the ty
 `.env` holds this computer's settings and secrets and is never committed. `APP_KEY` is the one root
 secret: create it with `node strut key:generate`. Logging follows Laravel's channels: `LOG_CHANNEL`,
 `LOG_STACK` and `LOG_LEVEL` in `.env`, files in `storage/logs`.
+
+Every key the framework reads is already in `.env`; an empty value means the default, and a
+database or service whose keys are empty is checked only when something uses it. Besides the
+default database (`DB_*`), `config/database.ts` declares extra connections (`mysql`, `pgsql`,
+`sqlite`, or your own name) with their own keys (`DB_PGSQL_DATABASE`, ...). Use one with
+`db.connection('pgsql')`, a model's `connection: 'pgsql'` option, or
+`node strut migrate --database=pgsql`.
 <!-- @strut:if ui not none -->
 
 ## Design

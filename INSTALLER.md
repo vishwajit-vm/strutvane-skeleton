@@ -63,7 +63,7 @@ The reference is `src/render.ts`. For each run:
 
 ## 3. `.env` and `.env.example`
 
-- `.env.example` now comes from the skeleton. It lists every key the config files read, with no secrets (tested here).
+- `.env.example` now comes from the skeleton. It lists **every key the framework reads** (decision #132: app, database with the extra `DB_MYSQL_*`/`DB_PGSQL_*`/`DB_SQLITE_*` connections, logging, cache, session, queue, mail, files/S3, broadcast, and `REDIS_*` for `@strutvane/redis`), every key set (none only commented out), grouped under a comment each, with no secrets (tested here). Keys the skeleton lists are set in place by the installer, never appended twice.
 - The installer still writes `.env`: start from the rendered `.env.example`, set the local values (`APP_ENV=local`, `APP_DEBUG=true`, the chosen ports and URL), then the secrets step fills `APP_KEY` (and the generated database passwords in Docker mode). A typed database password or `DB_URL` goes to `.env` only, as today.
 - Keys the installer **appends** to both files, because they belong to installer features that the skeleton does not have yet: Docker mode (`COMPOSE_PROJECT_NAME`, `FORWARD_DB_PORT`, `FORWARD_MAILPIT_PORT`, `STRUT_UID`, `STRUT_GID`, `DB_ROOT_PASSWORD`, and for PostgreSQL `DB_MIGRATION_USERNAME` / `DB_MIGRATION_PASSWORD`, with the app role in `DB_USERNAME`), mail (`MAIL_*`), the first admin (`SEED_ADMIN_EMAIL`) and AI (`AI_PROVIDER`, the provider's key line). Moving them into the skeleton is a follow-up (NEXT.md).
 

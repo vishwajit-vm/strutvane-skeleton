@@ -1,3 +1,32 @@
+# feat/env-keys: every key in `.env.example`, extra database connections (decision #132)
+
+Branch `feat/env-keys` from `v2/skeleton` (ea31741, which contains 7a8be7e). Not pushed by the
+agent. Framework side: `v2/env-connections` (RFC-0007, hub `docs/rfcs/0007-database-connections.md`).
+
+## Done
+- `template/.env.example`: every key the framework reads, each set (none only commented out),
+  grouped with a comment each: application; default database (`DB_*`, also
+  `DB_MIGRATION_REPLAY_TIMEOUT`); extra connections `DB_MYSQL_*`, `DB_PGSQL_*`, `DB_SQLITE_*`
+  (host/port filled, database empty = checked on first use); logging; cache; sessions; queue
+  (`QUEUE_CONNECTION=database`, RFC-0006); mail (`log`); broadcast (`log`); files + S3 (`AWS_*`,
+  for `@strutvane/files`); Redis (`REDIS_HOST=127.0.0.1`, `REDIS_PORT=6379`, `REDIS_DB=0`,
+  comment: needs `@strutvane/redis`). Secrets (passwords, URLs holding them, keys) empty.
+- `template/config/database.ts`: `connections: { mysql, pgsql, sqlite }`; `filesystems.ts`
+  comment names the S3 keys; template README "Settings and secrets".
+- Tests (`test/env.test.ts`, `test/render.test.ts`): every key set for all answer combinations,
+  no key nothing reads (service keys listed by group), secret URLs empty, server-free defaults,
+  a comment before every block, Redis comment, the declared connections match the listed keys.
+
+## Next
+- Re-vendor into create-strutvane (`npm run vendor:skeleton`) once this is merged (the installer
+  branch `feat/env-keys` already expects these keys).
+- Run the integration test against a framework tarball with RFC-0007
+  (`STRUT_FRAMEWORK_TARBALL=<pack of v2/env-connections>`); on 0.2.0-next.1 the `connections`
+  block is ignored, so the app still boots.
+
+## How to verify
+`npm ci`, `npm run ci`; for the real app: `STRUT_FRAMEWORK_TARBALL=... npx vitest run test/integration.test.ts`.
+
 # v2/skeleton: where this branch stands
 
 The first build of `strutvane-skeleton`: the app template (`template/`), the manifest

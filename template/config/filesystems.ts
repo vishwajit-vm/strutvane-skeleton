@@ -5,7 +5,8 @@
 // - `public`: files anyone may read, in storage/app/public (`node strut storage:link` exposes it).
 //
 // Cloud disks (S3 and compatible) come from `@strutvane/files` (`node strut install:files`);
-// their bucket and keys live only in .env.
+// their bucket and keys live only in .env (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_BUCKET,
+// AWS_DEFAULT_REGION, AWS_ENDPOINT, ..., already listed in .env.example).
 import { defineConfig } from '@strutvane/framework'
 
 export default defineConfig((env) => ({

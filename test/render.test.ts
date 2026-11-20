@@ -108,11 +108,13 @@ describe('answer-dependent files', () => {
     expect(render({ auth: 'none' }).map((file) => file.path)).not.toContain('config/auth.ts')
   })
 
-  it('SQLite keeps the server keys commented; a server engine gets them set', () => {
+  it('SQLite lists the server keys with neutral values (#132); a server engine gets its own', () => {
     const sqlite = fileOf(render({ database: 'sqlite' }), '.env.example')
     expect(sqlite).toContain('DB_CONNECTION=sqlite\nDB_DATABASE=database/database.sqlite\n')
-    expect(sqlite).toMatch(/^# DB_HOST=/m)
-    expect(sqlite).not.toMatch(/^DB_HOST=/m)
+    // Listed (every key is in .env) but ignored while DB_CONNECTION=sqlite.
+    expect(sqlite).toMatch(/^DB_HOST=127\.0\.0\.1$/m)
+    expect(sqlite).toMatch(/^DB_PORT=$/m)
+    expect(sqlite).not.toMatch(/^# DB_HOST=/m)
     const postgres = fileOf(render({ database: 'postgres', name: 'acme-portal' }), '.env.example')
     expect(postgres).toContain('DB_CONNECTION=pgsql\n')
     expect(postgres).toContain('DB_PORT=5432\n')
