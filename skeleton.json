@@ -118,6 +118,11 @@
   },
   "files": [
     { "path": ".editorconfig", "mode": "copy" },
+    {
+      "path": ".gitattributes",
+      "mode": "copy",
+      "note": "LF everywhere: no 'LF will be replaced by CRLF' on Windows (SKEL-3)."
+    },
     { "path": ".env.example", "mode": "template" },
     {
       "path": ".gitignore",
@@ -162,7 +167,11 @@
     { "path": "app/providers/app.provider.ts", "mode": "copy" },
     { "path": "bootstrap/app.ts", "mode": "copy" },
     { "path": "bootstrap/cache/.gitignore", "mode": "copy" },
-    { "path": "bootstrap/providers.ts", "mode": "copy" },
+    {
+      "path": "bootstrap/providers.ts",
+      "mode": "template",
+      "note": "Lists @strutvane/auth/provider when auth is not none (AUTH-2); node strut install:auth adds it later."
+    },
     { "path": "config/app.ts", "mode": "template" },
     {
       "path": "config/auth.ts",

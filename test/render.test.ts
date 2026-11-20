@@ -108,6 +108,38 @@ describe('answer-dependent files', () => {
     expect(render({ auth: 'none' }).map((file) => file.path)).not.toContain('config/auth.ts')
   })
 
+  it('AUTH-2: with sign-in the auth provider is registered at boot; without it, not', () => {
+    for (const auth of ['email', 'magic-link']) {
+      const providers = fileOf(render({ auth }), 'bootstrap/providers.ts')
+      expect(providers).toContain("import auth from '@strutvane/auth/provider'")
+      expect(providers).toMatch(/\[\n {2}AppServiceProvider,\n {2}auth,\n\]/)
+      expect(providers).not.toContain('@strut:')
+    }
+    const none = fileOf(render({ auth: 'none' }), 'bootstrap/providers.ts')
+    expect(none).not.toContain('@strutvane/auth')
+    expect(none).toMatch(/\[\n {2}AppServiceProvider,\n\]/)
+  })
+
+  it('UI-1/UI-2: the UI uses VITE_API_URL (default /api/v1), and asks for workspaces only with teams', () => {
+    const off = fileOf(render({ teams: false }), 'resources/ui/main.tsx')
+    expect(off).toContain("const apiUrl = import.meta.env['VITE_API_URL'] ?? '/api/v1'")
+    expect(off).toContain('apiUrl={apiUrl}')
+    expect(off).toContain('tenancy={false}')
+    expect(off).not.toContain('@strut:')
+    expect(fileOf(render({ teams: true }), 'resources/ui/main.tsx')).not.toContain('tenancy=')
+  })
+
+  it('the API is served under /api/v1, matching auth and the UI', () => {
+    const files = render({})
+    expect(fileOf(files, 'bootstrap/app.ts')).toContain("apiPrefix: '/api/v1'")
+    expect(fileOf(files, 'tests/feature/health.test.ts')).toContain('/api/v1/health')
+  })
+
+  it('SKEL-3: every app gets LF line endings (.gitattributes)', () => {
+    for (const { files } of everyRendering())
+      expect(fileOf(files, '.gitattributes')).toContain('* text=auto eol=lf')
+  })
+
   it('SQLite keeps the server keys commented; a server engine gets them set', () => {
     const sqlite = fileOf(render({ database: 'sqlite' }), '.env.example')
     expect(sqlite).toContain('DB_CONNECTION=sqlite\nDB_DATABASE=database/database.sqlite\n')

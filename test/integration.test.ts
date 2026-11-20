@@ -16,7 +16,7 @@
  * `template/.strutvane/` instead of failing when they differ.
  */
 import { type SpawnSyncReturns, spawn, spawnSync } from 'node:child_process'
-import { createHash } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import {
   copyFileSync,
   existsSync,
@@ -52,11 +52,16 @@ function newest(folder: string): number {
   return latest
 }
 
-/** Run a program to completion; never through a shell. */
-function run(args: readonly string[], timeoutMs = 300_000): SpawnSyncReturns<string> {
+/** Run a program to completion in an app folder; never through a shell. */
+function run(
+  args: readonly string[],
+  timeoutMs = 300_000,
+  cwd: string = APP,
+  extraEnv: NodeJS.ProcessEnv = {},
+): SpawnSyncReturns<string> {
   return spawnSync(process.execPath, args, {
-    cwd: APP,
-    env: childEnv(),
+    cwd,
+    env: { ...childEnv(), ...extraEnv },
     encoding: 'utf8',
     timeout: timeoutMs,
     windowsHide: true,
@@ -164,63 +169,75 @@ async function waitFor(url: string, timeoutMs: number): Promise<void> {
   throw new Error(`${url} did not answer 200 within ${timeoutMs} ms (${last})`)
 }
 
-/** Render the API-only SQLite variant into APP, keeping a matching node_modules. */
-function renderApp(tarball: string): void {
-  const answers = resolveAnswers(manifest, {
-    name: 'skeleton-it',
-    ui: 'none',
-    auth: 'none',
-    database: 'sqlite',
-    testing: 'vitest',
-  })
+/**
+ * Render a variant into `dir` and install the given package tarballs, keeping a matching
+ * node_modules between runs (same tarballs, same package.json).
+ */
+function renderApp(
+  dir: string,
+  given: Readonly<Record<string, string | boolean>>,
+  tarballs: readonly string[],
+): void {
+  const answers = resolveAnswers(manifest, given)
   const files = renderSkeleton({ root: ROOT, manifest, answers })
   const pkg = files.find((file) => file.path === 'package.json')?.content ?? ''
-  const stamp = createHash('sha256').update(readFileSync(tarball)).update(pkg).digest('hex')
-  const stampFile = join(APP, 'node_modules', '.skeleton-stamp')
+  const hash = createHash('sha256').update(pkg)
+  for (const tarball of tarballs) hash.update(readFileSync(tarball))
+  const stamp = hash.digest('hex')
+  const stampFile = join(dir, 'node_modules', '.skeleton-stamp')
   const reuse = existsSync(stampFile) && readFileSync(stampFile, 'utf8') === stamp
-  if (existsSync(APP))
-    for (const entry of readdirSync(APP))
+  if (existsSync(dir))
+    for (const entry of readdirSync(dir))
       if (!(reuse && entry === 'node_modules'))
-        rmSync(join(APP, entry), { recursive: true, force: true })
+        rmSync(join(dir, entry), { recursive: true, force: true })
   for (const file of files) {
-    const path = join(APP, ...file.path.split('/'))
+    const path = join(dir, ...file.path.split('/'))
     mkdirSync(dirname(path), { recursive: true })
     writeFileSync(path, file.content)
   }
   if (!reuse) {
     expectOk(
-      run([npmCli(), 'install', '--no-save', '--no-audit', '--no-fund', tarball], 540_000),
+      run([npmCli(), 'install', '--no-save', '--no-audit', '--no-fund', ...tarballs], 540_000, dir),
       'npm install',
     )
     writeFileSync(stampFile, stamp)
   }
-  compat = acceptCompatOnce()
 }
 
-/** What the installed framework's `strutvane.compat` said before the local workaround. */
-let compat: { readonly range: string; readonly version: string } | undefined
+/** A local .env for a rendered app: development settings on a free port. */
+function writeLocalEnv(dir: string, port: number): void {
+  const example = readFileSync(join(dir, '.env.example'), 'utf8')
+  const local = example
+    .replace(/^APP_ENV=.*$/m, 'APP_ENV=local')
+    .replace(/^APP_DEBUG=.*$/m, 'APP_DEBUG=true')
+    .replace(/^APP_URL=.*$/m, `APP_URL=http://127.0.0.1:${port}`)
+    .replace(/^APP_PORT=.*$/m, `APP_PORT=${port}`)
+  writeFileSync(join(dir, '.env'), local)
+}
 
-/**
- * KNOWN FRAMEWORK BUG (0.2.0-next.0): its package.json says `strutvane.compat: ^0.1.0-next.0`,
- * so its own 0.2.0-next.0 CLI refuses the framework's commands (`migrate`, `db:seed`, `sync`,
- * `start` and `dev` fall back to v1 placeholders or are unknown). Until a fixed framework ships,
- * the installed copy in .work gets the range of its own version so the rest of the app can be
- * tested; the 'KNOWN BUG' test below fails as soon as the framework is fixed, as a reminder to
- * delete this workaround. Nothing outside .work is ever changed.
- */
-function acceptCompatOnce(): { readonly range: string; readonly version: string } {
-  const file = join(APP, 'node_modules', '@strutvane', 'framework', 'package.json')
-  const original = join(APP, 'node_modules', '.framework-compat-original')
-  const pkg = JSON.parse(readFileSync(file, 'utf8')) as {
-    version: string
-    strutvane: { compat: string }
-  }
-  if (!existsSync(original)) writeFileSync(original, pkg.strutvane.compat)
-  const range = readFileSync(original, 'utf8')
-  const minor = /^(\d+\.\d+)\./.exec(pkg.version)?.[1] ?? ''
-  pkg.strutvane.compat = `^${minor}.0-next.0`
-  writeFileSync(file, `${JSON.stringify(pkg, null, 2)}\n`)
-  return { range, version: pkg.version }
+/** Start the framework's own server for an app (one process: no orphan on Windows). */
+function startServer(
+  dir: string,
+  port: number,
+): { child: ReturnType<typeof spawn>; output: () => string } {
+  const bin = join(dir, 'node_modules', '@strutvane', 'framework', 'dist', 'console', 'bin.mjs')
+  let output = ''
+  const child = spawn(
+    process.execPath,
+    [bin, 'start', '--port', String(port), '--host', '127.0.0.1'],
+    {
+      cwd: dir,
+      env: childEnv(),
+      windowsHide: true,
+    },
+  )
+  child.stdout?.on('data', (chunk: Buffer) => {
+    output += chunk.toString()
+  })
+  child.stderr?.on('data', (chunk: Buffer) => {
+    output += chunk.toString()
+  })
+  return { child, output: () => output }
 }
 
 /** Does a `^0.N…` / `^M…` range accept a version (enough semver for this one check)? */
@@ -241,29 +258,28 @@ const title =
 describe.skipIf(!('path' in source))(title, { timeout: 300_000 }, () => {
   let port = 0
   let server: ReturnType<typeof spawn> | undefined
-  let serverOutput = ''
 
   beforeAll(async () => {
     if (!('path' in source)) return
-    renderApp(source.path)
+    renderApp(
+      APP,
+      { name: 'skeleton-it', ui: 'none', auth: 'none', database: 'sqlite', testing: 'vitest' },
+      [source.path],
+    )
     port = await freePort()
-    const example = readFileSync(join(APP, '.env.example'), 'utf8')
-    const local = example
-      .replace(/^APP_ENV=.*$/m, 'APP_ENV=local')
-      .replace(/^APP_DEBUG=.*$/m, 'APP_DEBUG=true')
-      .replace(/^APP_URL=.*$/m, `APP_URL=http://127.0.0.1:${port}`)
-      .replace(/^APP_PORT=.*$/m, `APP_PORT=${port}`)
-    writeFileSync(join(APP, '.env'), local)
+    writeLocalEnv(APP, port)
   }, 600_000)
 
   afterAll(() => {
     server?.kill()
   })
 
-  it('KNOWN BUG: framework 0.2.0-next.0 declares strutvane.compat ^0.1.0-next.0 (refuses its own CLI)', () => {
-    // When this fails, the framework is fixed: delete acceptCompatOnce() and this test.
-    expect(compat).toBeDefined()
-    expect(caretAccepts(compat?.range ?? '', compat?.version ?? '')).toBe(false)
+  it("the installed framework's strutvane.compat accepts its own version (its CLI runs its commands)", () => {
+    // 0.2.0-next.0 shipped ^0.1.0-next.0 and refused its own commands; fixed in 0.2.0-next.1.
+    const pkg = JSON.parse(
+      readFileSync(join(APP, 'node_modules', '@strutvane', 'framework', 'package.json'), 'utf8'),
+    ) as { version: string; strutvane: { compat: string } }
+    expect(caretAccepts(pkg.strutvane.compat, pkg.version)).toBe(true)
   })
 
   it('node strut key:generate writes APP_KEY into .env only', () => {
@@ -310,6 +326,17 @@ describe.skipIf(!('path' in source))(title, { timeout: 300_000 }, () => {
     }
   })
 
+  it('SKEL-1: node strut db:seed runs again without a duplicate-email error (firstOrCreate)', () => {
+    expectOk(run(['strut.js', 'db:seed']), 'node strut db:seed (second run)')
+    const db = new DatabaseSync(join(APP, 'database', 'database.sqlite'), { readOnly: true })
+    try {
+      const row = db.prepare('SELECT COUNT(*) AS n FROM users').get() as { n: number } | undefined
+      expect(row?.n).toBe(5)
+    } finally {
+      db.close()
+    }
+  })
+
   it('node strut migrate:status reports both migrations as ran', () => {
     const output = expectOk(run(['strut.js', 'migrate:status']), 'node strut migrate:status')
     expect(output).not.toContain('pending')
@@ -322,41 +349,156 @@ describe.skipIf(!('path' in source))(title, { timeout: 300_000 }, () => {
     )
   }, 560_000)
 
-  it('boots and answers /up, /api/health and /', async () => {
+  it('boots and answers /up, /api/v1/health and /', async () => {
     // The framework's own `start` (what `node strut start` hands over to), as one process, so
     // stopping it never leaves an orphaned server behind on Windows.
-    const bin = join(APP, 'node_modules', '@strutvane', 'framework', 'dist', 'console', 'bin.mjs')
-    server = spawn(
-      process.execPath,
-      [bin, 'start', '--port', String(port), '--host', '127.0.0.1'],
-      {
-        cwd: APP,
-        env: childEnv(),
-        windowsHide: true,
-      },
-    )
-    server.stdout?.on('data', (chunk: Buffer) => {
-      serverOutput += chunk.toString()
-    })
-    server.stderr?.on('data', (chunk: Buffer) => {
-      serverOutput += chunk.toString()
-    })
+    const started = startServer(APP, port)
+    server = started.child
+    const serverOutput = started.output
     const base = `http://127.0.0.1:${port}`
     try {
       await waitFor(`${base}/up`, 180_000)
     } catch (error) {
-      throw new Error(`${error instanceof Error ? error.message : String(error)}\n${serverOutput}`)
+      throw new Error(
+        `${error instanceof Error ? error.message : String(error)}\n${serverOutput()}`,
+      )
     }
     const up = await fetch(`${base}/up`)
     expect(await up.json()).toEqual({ status: 'ok' })
-    const health = await fetch(`${base}/api/health`)
+    const health = await fetch(`${base}/api/v1/health`)
     expect(health.status).toBe(200)
     expect(await health.json()).toEqual({ status: 'ok' })
     const home = await fetch(`${base}/`)
     expect(home.status).toBe(200)
     expect(await home.text()).toContain('<h1>skeleton-it</h1>')
-    const missing = await fetch(`${base}/api/missing`)
+    const missing = await fetch(`${base}/api/v1/missing`)
     expect(missing.status).toBe(404)
     expect(up.headers.get('x-content-type-options')).toBe('nosniff')
   }, 240_000)
 })
+
+/**
+ * Sign-in end to end (demo acceptance AUTH-1, AUTH-2, AUTH-3): an app rendered WITH sign-in, the
+ * real framework and the auth package (`STRUT_AUTH_TARBALL`, an `npm pack` of strutvane-auth),
+ * booted as a server: the skeleton registers auth's provider, auth accepts the skeleton's class
+ * policy, `install:auth` copies the migrations, and `POST /api/v1/auth/sign-in` signs in.
+ */
+const AUTH_APP = join(WORK, 'it-auth-app')
+const authTarball = process.env['STRUT_AUTH_TARBALL']
+const authSource: { readonly path: string } | { readonly reason: string } = !('path' in source)
+  ? source
+  : authTarball === undefined || authTarball === ''
+    ? { reason: 'STRUT_AUTH_TARBALL is not set (an npm pack of @strutvane/auth)' }
+    : existsSync(authTarball)
+      ? { path: authTarball }
+      : { reason: `STRUT_AUTH_TARBALL=${authTarball} does not exist` }
+
+describe.skipIf(!('path' in authSource))(
+  'path' in authSource
+    ? 'integration: sign-in through the API with @strutvane/auth'
+    : `integration with sign-in (skipped: ${authSource.reason})`,
+  { timeout: 300_000 },
+  () => {
+    let port = 0
+    let server: ReturnType<typeof spawn> | undefined
+    // A throwaway password for this run only: never written to a file.
+    const password = randomBytes(18).toString('base64url')
+
+    beforeAll(async () => {
+      if (!('path' in source) || !('path' in authSource)) return
+      renderApp(
+        AUTH_APP,
+        {
+          name: 'skeleton-auth-it',
+          ui: 'none',
+          auth: 'email',
+          database: 'sqlite',
+          testing: 'none',
+        },
+        [source.path, authSource.path],
+      )
+      port = await freePort()
+      writeLocalEnv(AUTH_APP, port)
+      expectOk(run(['strut.js', 'key:generate'], 300_000, AUTH_APP), 'node strut key:generate')
+    }, 600_000)
+
+    afterAll(() => {
+      server?.kill()
+    })
+
+    it('type-checks with the provider registered (no cast needed)', () => {
+      const providers = readFileSync(join(AUTH_APP, 'bootstrap', 'providers.ts'), 'utf8')
+      expect(providers).toContain("import auth from '@strutvane/auth/provider'")
+      expectOk(
+        run(
+          [join('node_modules', 'typescript', 'bin', 'tsc'), '--noEmit', '-p', 'tsconfig.json'],
+          300_000,
+          AUTH_APP,
+        ),
+        'tsc',
+      )
+    })
+
+    it('node strut install:auth sees the provider and copies the migrations; migrate applies them', () => {
+      const output = expectOk(run(['strut.js', 'install:auth'], 300_000, AUTH_APP), 'install:auth')
+      expect(output).toMatch(/already registered/)
+      expectOk(run(['strut.js', 'migrate'], 300_000, AUTH_APP), 'node strut migrate')
+      expectOk(run(['strut.js', 'db:seed'], 300_000, AUTH_APP), 'node strut db:seed')
+      expectOk(run(['strut.js', 'db:seed'], 300_000, AUTH_APP), 'node strut db:seed (again)')
+      expectOk(
+        run(
+          [
+            'strut.js',
+            'auth:user:create',
+            '--email',
+            'admin@example.test',
+            '--name',
+            'Admin',
+            '--password-env',
+            'IT_ADMIN_PASSWORD',
+          ],
+          300_000,
+          AUTH_APP,
+          { IT_ADMIN_PASSWORD: password },
+        ),
+        'auth:user:create',
+      )
+    })
+
+    it('boots with the skeleton policy and signs in at /api/v1/auth/sign-in', async () => {
+      const started = startServer(AUTH_APP, port)
+      server = started.child
+      const base = `http://127.0.0.1:${port}`
+      try {
+        await waitFor(`${base}/up`, 180_000)
+      } catch (error) {
+        throw new Error(`${error instanceof Error ? error.message : String(error)}
+${started.output()}`)
+      }
+      const headers = { 'content-type': 'application/json', origin: base }
+      const wrong = await fetch(`${base}/api/v1/auth/sign-in`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ email: 'admin@example.test', password: `${password}x` }),
+      })
+      expect(wrong.status).toBe(401)
+      const signIn = await fetch(`${base}/api/v1/auth/sign-in`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ email: 'admin@example.test', password }),
+      })
+      expect(signIn.status, started.output()).toBe(200)
+      const body = (await signIn.json()) as { actor?: { id?: unknown } }
+      expect(typeof body.actor?.id).toBe('string')
+      const cookie = signIn.headers
+        .getSetCookie()
+        .map((c) => c.split(';')[0] ?? '')
+        .join('; ')
+      const me = await fetch(`${base}/api/v1/auth/me`, { headers: { cookie } })
+      expect(me.status).toBe(200)
+      // The old, unversioned path the UI used before UI-1 is not the auth API.
+      const legacy = await fetch(`${base}/api/auth/me`, { headers: { cookie } })
+      expect(legacy.status).toBe(404)
+    }, 240_000)
+  },
+)

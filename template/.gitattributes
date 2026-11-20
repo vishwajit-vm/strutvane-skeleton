@@ -1,0 +1,16 @@
+# Line endings: LF in the repository and in every checkout, on every OS. Without this, git on
+# Windows warns "LF will be replaced by CRLF" for every file, and a formatter set to LF fails on a
+# clean clone.
+* text=auto eol=lf
+
+# Binary files: never touched.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.sqlite binary

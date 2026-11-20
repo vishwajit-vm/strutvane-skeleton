@@ -1,5 +1,5 @@
-// API routes, served under /api with the api middleware group (CSRF for cookie requests, the
-// `api` rate limiter). Versioning such as /api/v1 is opt-in with Route.group({ prefix: 'v1' }).
+// API routes, served under /api/v1 (bootstrap/app.ts `apiPrefix`) with the api middleware group
+// (CSRF for cookie requests, the `api` rate limiter). A later /api/v2 is a second prefix.
 //
 // The CRUD routes for your models are added by `node strut migrate` (routes/resources.gen.ts).
 import { defineRoutes, Route } from '@strutvane/framework'

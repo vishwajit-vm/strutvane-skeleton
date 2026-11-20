@@ -23,14 +23,14 @@ describe('health', () => {
     expect(await response.json()).toEqual({ status: 'ok' })
   })
 
-  it('GET /api/health answers ok', async () => {
-    const response = await app.handle(new Request('http://localhost/api/health'))
+  it('GET /api/v1/health answers ok', async () => {
+    const response = await app.handle(new Request('http://localhost/api/v1/health'))
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ status: 'ok' })
   })
 
   it('an unknown route is a 404 problem, not a crash', async () => {
-    const response = await app.handle(new Request('http://localhost/api/does-not-exist'))
+    const response = await app.handle(new Request('http://localhost/api/v1/does-not-exist'))
     expect(response.status).toBe(404)
   })
 })

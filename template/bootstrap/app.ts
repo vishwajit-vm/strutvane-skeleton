@@ -13,7 +13,9 @@ import providers from './providers.ts'
 export default Application.configure({ basePath: dirname(import.meta.dirname) })
   .withConfig(config)
   .withProviders(providers)
-  .withRouting({ web, api, health: '/up' })
+  // The API lives under /api/v1 (the URL contract: @strutvane/auth answers at /api/v1/auth and the
+  // UI's VITE_API_URL is /api/v1). Change it here, and in VITE_API_URL, together.
+  .withRouting({ web, api, apiPrefix: '/api/v1', health: '/up' })
   .withMiddleware((_middleware) => {
     // App-wide middleware settings, for example:
     // _middleware.validateCsrfTokens({ except: ['webhooks/*'] })

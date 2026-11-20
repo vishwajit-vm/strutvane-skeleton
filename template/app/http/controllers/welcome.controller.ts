@@ -7,7 +7,7 @@ export class WelcomeController {
     return ctx.html(
       `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>${name}</title></head>` +
         `<body><h1>${name}</h1><p>Your Strutvane app is running.</p>` +
-        '<p>API health: <a href="/api/health">/api/health</a></p></body></html>',
+        '<p>API health: <a href="/api/v1/health">/api/v1/health</a></p></body></html>',
     )
   }
 }

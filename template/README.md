@@ -37,7 +37,7 @@ Columns live only in migrations. `migrate` applies them, then regenerates the ty
 | `bootstrap/app.ts` | builds the app: config, providers, routes, middleware, error handling |
 | `config/` | settings; values come from `.env` (`.env.example` lists every key, never a secret) |
 | `database/migrations/`, `seeders/`, `factories/` | schema, sample data, fake data for tests |
-| `routes/web.ts`, `routes/api.ts` | routes (the API is served under `/api`; `GET /up` is the health check) |
+| `routes/web.ts`, `routes/api.ts` | routes (the API is served under `/api/v1`; `GET /up` is the health check) |
 <!-- @strut:if ui not none -->
 | `resources/ui/` | the React UI (`main.tsx`) and your theme overrides (`theme.css`) |
 <!-- @strut:endif -->

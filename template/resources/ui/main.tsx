@@ -16,11 +16,24 @@ const routes: RouteDefinition[] = []
 // biome-ignore lint/performance/noDynamicNamespaceImportAccess: literal key, resolved statically
 const design = designs['{{DESIGN}}']
 
+// The API base (VITE_API_URL, default /api/v1). Auth answers under it (/api/v1/auth) and the
+// resource manifest comes from this site's /.well-known/strutvane.json.
+const apiUrl = import.meta.env['VITE_API_URL'] ?? '/api/v1'
+
 const container = document.getElementById('root')
 if (container === null) throw new Error('resources/ui/index.html needs <div id="root"></div>')
 
 createRoot(container).render(
   <StrictMode>
-    <StrutvaneApp apiUrl="/api" appName="{{APP_NAME}}" design={design} routes={routes} />
+    <StrutvaneApp
+      apiUrl={apiUrl}
+      appName="{{APP_NAME}}"
+      design={design}
+      routes={routes}
+      // @strut:if teams is false
+      // Teams are off: the UI never asks the API for workspaces.
+      tenancy={false}
+      // @strut:endif
+    />
   </StrictMode>,
 )
