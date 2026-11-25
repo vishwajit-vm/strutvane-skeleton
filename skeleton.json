@@ -169,7 +169,7 @@
       "mode": "answers",
       "generator": "configAuth",
       "when": { "auth": { "not": ["none"] } },
-      "note": "Sign-in feature switches from questions 5, 6, 9 and 11; the template holds the Recommended answers."
+      "note": "Sign-in feature switches from questions 5, 6, 9 and 11, and the role map from questions 10 and 11 (team roles get scope tenant and the reserved owner role; admin stays a platform role); the template holds the Recommended answers."
     },
     { "path": "config/cache.ts", "mode": "copy" },
     { "path": "config/database.ts", "mode": "template" },
@@ -230,7 +230,7 @@
       { "name": "@strutvane/framework", "value": "^0.2.0-next.0" },
       {
         "name": "@strutvane/auth",
-        "value": "^0.2.0-next.0",
+        "value": "^0.2.0-next.2",
         "when": { "auth": { "not": ["none"] } }
       },
       { "name": "@strutvane/ui", "value": "^0.2.0-next.0", "when": { "ui": { "not": ["none"] } } },
@@ -338,7 +338,7 @@
     {
       "path": "config/permissions.ts",
       "whenText": "auth is not none",
-      "why": "Starting roles answer (question 10)."
+      "why": "Starting roles answer (question 10), recorded as data; the roles themselves are the role map in config/auth.ts."
     },
     {
       "path": "config/ai.ts",

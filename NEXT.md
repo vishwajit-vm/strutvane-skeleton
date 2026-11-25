@@ -1,3 +1,33 @@
+# fix/tenant-role-scopes (2026-11-25, from v2/skeleton ea31741)
+
+Compatibility with `@strutvane/auth` 0.2.0-next.2 (auth branch `fix/hardening-2026-11-20`): role
+map entries without a `scope` are platform roles, team roles say `scope: 'tenant'`, the team
+creator holds the reserved `owner`, `admin` is platform-only.
+
+## Done
+- `template/config/auth.ts` (Recommended answers: teams off, registration off, as before) now
+  holds the role map: `admin` (`scope: 'global'`, `*` + exact user grants) and `member`
+  (`scope: 'global'`, view/create + own update/delete), the complete `wildcardExclude` list of
+  hub docs/07 §4.4, `newModelDefaults: 'inherit-role-patterns'`, `defaultRoles: []`, and a comment
+  on scopes, `owner` and the platform-only `admin` (with the teams-on shape as an example).
+  The installer's `configAuth` generates the same shape per answer (create-strutvane branch
+  `fix/tenant-role-scopes`).
+- `@strutvane/auth` range `^0.2.0-next.2` in `skeleton.json` and `template/package.json`.
+- `skeleton.json` notes and `INSTALLER.md` §2 say `config/auth.ts` carries the role map.
+- Tests: `test/auth-config.test.ts` (rendered verbatim; teams/registration off; explicit scopes;
+  admin global, no team roles while teams are off; no widening permission scope; patterns;
+  wildcard exclusions; only admin manages users; members change only their own records).
+- Checked once by hand (not in CI): the template map compiles with auth
+  `fix/hardening-2026-11-20` (da3c6f5) `compileRoleMap` / `engineConfigFrom` / `defineAuthConfig`.
+- No changeset: this repo is private, unpublished and has no Changesets setup.
+
+## Next
+- Merge into `v2/skeleton` / `main`, then move create-strutvane's vendored pin
+  (`npm run vendor:skeleton -- --ref <commit>`).
+- Hub docs/07 §4.4 still says a role's default scope is `'any'` (auth next.2: `'global'`).
+
+---
+
 # v2/skeleton: where this branch stands
 
 The first build of `strutvane-skeleton`: the app template (`template/`), the manifest
